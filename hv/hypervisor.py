@@ -25,11 +25,12 @@ import ctypes
 import json
 
 
-
+#run_from_powershell
+#run_bcdedit
 
 class HyperVisor:
     def __init__(self):
-        def run_from_powershell(command:str, is_command:bool = True, capture_type:type = bool) -> str:
+        def powershell_wrapper(command:str, is_command:bool = True, capture_type:type = bool) -> str:
             if is_command:
                 result = subprocess.run(
                 [ "powershell", "-Command", command ],
@@ -69,7 +70,7 @@ class HyperVisor:
 
             else:return result
                   
-        def run_bcdedit(command:str) -> str:
+        def bcdedit_wrapper(command:str) -> str:
             result = subprocess.run(["bcdedit", str( command )],
             capture_output=True,text=True)
 
@@ -81,7 +82,7 @@ class HyperVisor:
 
 
         options = {} 
-        enum_result = run_bcdedit("/enum")
+        enum_result = bcdedit_wrapper("/enum")
 
 
         for line in enum_result.stdout.splitlines():
@@ -94,10 +95,10 @@ class HyperVisor:
 
         self.toggle              = self.toggle(self)
         self.options             = options
-        self.run_bcdedit         = run_bcdedit
-        self.run_from_powershell = run_from_powershell
-        self.secureboot_status   = run_from_powershell('Confirm-SecureBootUEFI')
-        self.processor_bit       = run_from_powershell('(Get-CimInstance Win32_Processor).AddressWidth')
+        self.bcdedit_wrapper     = bcdedit_wrapper
+        self.powershell_wrapper  = powershell_wrapper
+        self.secureboot_status   = powershell_wrapper('Confirm-SecureBootUEFI')
+        self.processor_bit       = powershell_wrapper('(Get-CimInstance Win32_Processor).AddressWidth')
 
 
     def is_admin() -> bool:
@@ -115,7 +116,7 @@ class HyperVisor:
         return False
 
 
-    def check_system(self) -> dict:   
+    def system_info(self) -> dict:   
         powershell_script = r"""
 $cpu        = Get-CimInstance Win32_Processor
 $board      = Get-CimInstance Win32_BaseBoard
@@ -132,7 +133,7 @@ $system     = Get-CimInstance Win32_ComputerSystem
 } | ConvertTo-Json -Compress
 """
 
-        powershell_output = json.loads(self.run_from_powershell(f"-NoProfile -ExecutionPolicy Bypass -Command {powershell_script}", is_command=False).stdout)
+        powershell_output = json.loads(self.powershell_wrapper(f"-NoProfile -ExecutionPolicy Bypass -Command {powershell_script}", is_command=False).stdout)
 
 
         output = {
@@ -155,7 +156,7 @@ $system     = Get-CimInstance Win32_ComputerSystem
 
     def get_all_bcdedit_enum(self) -> str:
         options = {}
-        result = self.run_bcdedit("/enum all")
+        result = self.bcdedit_wrapper("/enum all")
 
         for line in result.stdout.splitlines():
             parts = line.split()
@@ -175,23 +176,23 @@ $system     = Get-CimInstance Win32_ComputerSystem
 
         def test_mode(self) -> None:
             if self.parent.options.get("testsigning", "").lower() == "yes":
-                self.parent.run_bcdedit('/set testsigning off')
+                self.parent.bcdedit_wrapper('/set testsigning off')
             else:
-                self.parent.run_bcdedit('/set testsigning on')
+                self.parent.bcdedit_wrapper('/set testsigning on')
 
 
         def integrity_checks(self) -> None:
             if self.parent.options.get("loadoptions") == 'DISABLE_INTEGRITY_CHECKS':
-                self.parent.run_bcdedit('/deletevalue loadoptions')
+                self.parent.bcdedit_wrapper('/deletevalue loadoptions')
             else: 
-                self.parent.run_bcdedit('/set loadoptions DISABLE_INTEGRITY_CHECKS')
+                self.parent.bcdedit_wrapper('/set loadoptions DISABLE_INTEGRITY_CHECKS')
 
 
         def hypervisor_launch(self) -> None:
             if self.parent.options.get("hypervisorlaunchtype", "").lower() == "auto":
-                self.parent.run_bcdedit('/set hypervisorlaunchtype off')
+                self.parent.bcdedit_wrapper('/set hypervisorlaunchtype off')
             else:
-                self.parent.run_bcdedit('/set hypervisorlaunchtype auto')
+                self.parent.bcdedit_wrapper('/set hypervisorlaunchtype auto')
 
 
 
@@ -199,9 +200,9 @@ $system     = Get-CimInstance Win32_ComputerSystem
 if __name__ == "__main__":
     h = HyperVisor()
 
-    print( h.check_system() )
+    print( h.system_info() )
 
-    #for key in h.check_system():print(f"{ key }:    { h.check_system()[key] }")
+    #for key in h.system_info():print(f"{ key }:    { h.system_info()[key] }")
 
     
 

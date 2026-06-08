@@ -1,5 +1,2 @@
 __pycache__/
-temp/
-debug.py
-push.bat
-test.ps1
+__dev__/
