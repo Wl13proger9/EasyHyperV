@@ -18,5 +18,17 @@
 #            CCCCCCCCCCCCCLLLLLLLLLLLLLLLLLLLLLLLLIIIIIIIIII
 #                                                           
 # CLI program - by Wl13Proger9
-# https://github.com/Wl13proger9/EasyHyperV                                                     
+# https://github.com/Wl13proger9/EasyHyperV         
+
+from hv.hypervisor import HyperVisor
+import sys
+
+
+hv = HyperVisor()
+
+
+
+
+def on_no_arg() -> None:
+    print("well...")
 

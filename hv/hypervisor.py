@@ -19,20 +19,23 @@
 # EasyHyperV - by Wl13Proger9
 # https://github.com/Wl13proger9/EasyHyperV    
    
-from   addition import *                                                                                                                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                                                          
 import subprocess
 import ctypes
+
 import json
 import re
 
-
+from .addition import *  
 
 
 class HyperVisor:
-    __version__ = "1"
+    __version__     = "5.30-14.06"
+    __build__       = "14/06/26"
+    __pep_version__ = "5.30.0"
 
 
-    def __init__(self):
+    def __init__(self) -> None:
         def powershell_wrapper(command:str, is_command:bool = True, capture_type:type = bool) -> str:
             if is_command:
                 result = subprocess.run(
@@ -240,10 +243,14 @@ class HyperVisor:
 
     def system_info(self) -> dict:   
         powershell_output = json.loads(self.powershell_wrapper(f"-NoProfile -ExecutionPolicy Bypass -Command {POWERSHELL_SYSTEM_INFO_CHECK}", is_command=False).stdout)
+        self.debug_print("loaded powershell script.")
 
         if self.options.get("testsigning", "").lower() == "yes":
             testsigning = True
-        else: testsigning = False
+            self.debug_print("testsigning is True.")
+        else: 
+            testsigning = False
+            self.debug_print("testsigning is False.")
 
         output = {
             "loadoptions":                          self.options.get("loadoptions"),                
@@ -263,13 +270,15 @@ class HyperVisor:
             "Testsigning":                          testsigning
         }
         
+        
+
         return output
 
 
     def get_all_bcdedit_enum(self) -> str:
         options = {}
         result = self.bcdedit_wrapper("/enum all")
-
+        self.debug_print("try to get get all enum params.")
         for line in result.stdout.splitlines():
             parts = line.split()
             if len(parts) >= 2:
@@ -282,10 +291,10 @@ class HyperVisor:
 
 
     class TestMode:
-        def __init__(self, parent):
+        def __init__(self, parent) -> None:
             self.parent = parent
     
-        def __call__(self):
+        def __call__(self) -> None:
             if self.parent.options.get("testsigning", "").lower() == "yes":
                 self.parent.bcdedit_wrapper('/set testsigning off')
 
@@ -316,10 +325,10 @@ class HyperVisor:
 
 
     class IntegrityChecks:
-        def __init__(self, parent):
+        def __init__(self, parent) -> None:
             self.parent = parent
     
-        def __call__(self):
+        def __call__(self) -> None:
             if self.parent.options.get("loadoptions") == 'DISABLE_INTEGRITY_CHECKS':
                 self.parent.bcdedit_wrapper('/deletevalue loadoptions')
 
@@ -350,10 +359,10 @@ class HyperVisor:
 
 
     class HypervisorLaunch:
-        def __init__(self, parent):
+        def __init__(self, parent) -> None:
             self.parent = parent
     
-        def __call__(self):
+        def __call__(self) -> None:
             if self.parent.options.get("hypervisorlaunchtype", "").lower() == "auto":
                 self.parent.bcdedit_wrapper('/set hypervisorlaunchtype off')
 
@@ -384,10 +393,10 @@ class HyperVisor:
  
 
     class MeltdownSpectreProtection:
-        def __init__(self, parent):
+        def __init__(self, parent) -> None:
             self.parent = parent
             
-        def __call__(self):
+        def __call__(self) -> None:
             if not self.parent.meltdown_spectre_protection():  #if False
                 self.parent.reg_wrapper( self.parent.meltdown_spectre['add'][0] ) #Override
                 self.parent.reg_wrapper( self.parent.meltdown_spectre['add'][1] ) #OverrideMask
@@ -426,9 +435,65 @@ class HyperVisor:
 if __name__ == "__main__":
     h = HyperVisor()
 
-    print( h.meltdown_spectre_protection() )
-    #print( h.system_info() )
-    #for key in h.system_info():print(f"{ key }:    { h.system_info()[key] }")
+    print("1) Show system info\n" \
+    "2) TestMode\n" \
+    "3) IntegrityChecks\n" \
+    "4) HypervisorLaunch\n" \
+    "5) MeltdownSpectreProtection\n" \
+    "6) Reboot\n")
 
-    
+    while True:
+        do = input("> ")
+
+        match do:
+            case "1": 
+                winsystem_info = h.system_info()
+                for key in winsystem_info:
+                    print(f"{ key }:    { winsystem_info[key] }")
+                
+            case "2": 
+                task = input("enable\ndisable\ntoggle\n")
+                match task:
+                    case "enable": h.TestMode.enable()
+                    case "disable":h.TestMode.disable()
+
+                    case "toggle": h.TestMode()
+                    case _:        h.TestMode()
+
+            case "3": 
+                task = input("enable\ndisable\ntoggle\n")
+                match task:
+                    case "enable": h.IntegrityChecks.enable()
+                    case "disable":h.IntegrityChecks.disable()
+
+                    case "toggle": h.IntegrityChecks()
+                    case _:        h.IntegrityChecks()
+
+            case "4": 
+                task = input("enable\ndisable\ntoggle\n")
+                match task:
+                    case "enable": h.HypervisorLaunch.enable()
+                    case "disable":h.HypervisorLaunch.disable()
+
+                    case "toggle": h.HypervisorLaunch()
+                    case _:        h.HypervisorLaunch()
+
+            case "5": 
+                task = input("enable\ndisable\ntoggle\n")
+                match task:
+                    case "enable": h.MeltdownSpectreProtection.enable()
+                    case "disable":h.MeltdownSpectreProtection.disable()
+
+                    case "toggle": h.MeltdownSpectreProtection()
+                    case _:        h.MeltdownSpectreProtection()
+
+            case "6":
+                h.reboot()
+
+            case _: 
+                continue
+ 
+
+ 
+ 
 
